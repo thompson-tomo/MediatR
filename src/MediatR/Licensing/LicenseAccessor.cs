@@ -42,15 +42,14 @@ internal class LicenseAccessor
             }
 
             var key = _configuration?.LicenseKey
-                      ?? Mediator.LicenseKey
-                      ?? null;
-            
-            if (key == null)
+                      ?? Mediator.LicenseKey;
+
+            if (string.IsNullOrWhiteSpace(key))
             {
                 return new License();
             }
 
-            var licenseClaims = ValidateKey(key);
+            var licenseClaims = ValidateKey(key!);
             return licenseClaims.Any() 
                 ? new License(new ClaimsPrincipal(new ClaimsIdentity(licenseClaims))) 
                 : new License();
