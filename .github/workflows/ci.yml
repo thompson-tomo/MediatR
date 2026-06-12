@@ -10,12 +10,13 @@ env:
   DOTNET_NOLOGO: true
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
   MINVERBUILDMETADATA: build.${{ github.run_id }}.${{ github.run_attempt}}
-# This workflow runs untrusted code from fork PRs, so it keeps a read-only token
-# and never needs secrets. Test results are published by a separate workflow
-# (test-report.yml, triggered via workflow_run) that runs in the base-repo
-# context with checks:write. See issue #1172.
+# On pull requests — especially from forks, where GitHub forces the token to
+# read-only — this workflow needs no secrets and only read access: it builds,
+# tests, and uploads .trx artifacts. Test results are published by a separate
+# workflow (test-report.yml, triggered via workflow_run) that runs in the
+# base-repo context with checks:write. The only secret is used by the main-only
+# Push to MyGet step. CI does not use OIDC, so no id-token. See issue #1172.
 permissions:
-  id-token: write
   contents: read
 jobs:
   build:
