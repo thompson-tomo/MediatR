@@ -65,11 +65,19 @@ internal class LicenseAccessor
     /// environment variable, then the shared <c>LUCKYPENNY_LICENSE_KEY</c> environment variable
     /// (usable across Lucky Penny products).
     /// </summary>
-    internal static string? ResolveLicenseKey(params string?[] explicitKeys) =>
-        explicitKeys
-            .Append(Environment.GetEnvironmentVariable(MediatRLicenseKeyEnvVariable))
-            .Append(Environment.GetEnvironmentVariable(SharedLicenseKeyEnvVariable))
-            .FirstOrDefault(key => !string.IsNullOrWhiteSpace(key));
+    internal static string? ResolveLicenseKey(params string?[] explicitKeys)
+    {
+        var explicitKey = explicitKeys.FirstOrDefault(key => !string.IsNullOrWhiteSpace(key));
+        if (explicitKey != null)
+        {
+            return explicitKey;
+        }
+
+        return FirstConfigured(Environment.GetEnvironmentVariable(MediatRLicenseKeyEnvVariable))
+               ?? FirstConfigured(Environment.GetEnvironmentVariable(SharedLicenseKeyEnvVariable));
+
+        static string? FirstConfigured(string? key) => string.IsNullOrWhiteSpace(key) ? null : key;
+    }
 
     private Claim[] ValidateKey(string licenseKey)
     {

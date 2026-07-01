@@ -5,10 +5,12 @@ using Xunit;
 
 namespace MediatR.Tests.Licensing;
 
+[CollectionDefinition(nameof(LicenseKeyEnvironmentVariableCollection), DisableParallelization = true)]
+public class LicenseKeyEnvironmentVariableCollection {}
+
 // Mutates process-global environment variables, so it must not run alongside
-// other tests that read them. Disable parallelization for this class.
-[Collection(nameof(LicenseKeyEnvironmentVariableTests))]
-[CollectionDefinition(nameof(LicenseKeyEnvironmentVariableTests), DisableParallelization = true)]
+// other tests that read them. Disable parallelization via the collection above.
+[Collection(nameof(LicenseKeyEnvironmentVariableCollection))]
 public class LicenseKeyEnvironmentVariableTests
 {
     private const string MediatREnvVar = LicenseAccessor.MediatRLicenseKeyEnvVariable;
