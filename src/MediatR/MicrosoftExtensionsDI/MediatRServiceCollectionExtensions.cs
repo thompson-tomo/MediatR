@@ -1,5 +1,7 @@
 using System;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using MediatR;
 using MediatR.Licensing;
 using MediatR.Pipeline;
@@ -60,16 +62,44 @@ public static class MediatRServiceCollectionExtensions
     
     internal static void CheckLicense(this IServiceProvider serviceProvider)
     {
-        if (LicenseChecked == false)
+        if (LicenseChecked)
         {
-            var licenseAccessor = serviceProvider.GetRequiredService<LicenseAccessor>();
-            var licenseValidator = serviceProvider.GetRequiredService<LicenseValidator>();
-            
+            return;
+        }
+
+        // Resolve the license services synchronously so a missing registration still surfaces
+        // on the caller. The resolutions are cheap; only the JWT validation below is expensive.
+        var licenseAccessor = serviceProvider.GetRequiredService<LicenseAccessor>();
+        var licenseValidator = serviceProvider.GetRequiredService<LicenseValidator>();
+
+        LicenseChecked = true;
+
+        // License validation is logging-only — it gates no Mediator behavior. Running it on the
+        // Mediator construction path is unsafe: under a lazily-built DI singleton the container
+        // holds its build lock, and a cold-start thread-pool starvation then deadlocks the whole
+        // app (same root cause as AutoMapper #4640, which used Task.Run(...).GetResult() under a
+        // singleton-build lock). Offload the JWT validation to a dedicated background thread.
+        _ = Task.Factory.StartNew(
+            () => ValidateLicense(serviceProvider, licenseAccessor, licenseValidator),
+            CancellationToken.None,
+            TaskCreationOptions.LongRunning, // dedicated thread, never the (possibly starved) pool
+            TaskScheduler.Default);          // honor LongRunning regardless of the ambient scheduler
+    }
+
+    private static void ValidateLicense(IServiceProvider serviceProvider, LicenseAccessor licenseAccessor, LicenseValidator licenseValidator)
+    {
+        try
+        {
             var license = licenseAccessor.Current;
             licenseValidator.Validate(license);
         }
-
-        LicenseChecked = true;
+        catch (Exception ex)
+        {
+            // Never let a fire-and-forget failure surface as an unobserved task exception.
+            serviceProvider.GetService<ILoggerFactory>()?
+                .CreateLogger("LuckyPennySoftware.MediatR.License")
+                .LogError(ex, "Error validating the Lucky Penny software license key");
+        }
     }
 
     internal static bool LicenseChecked { get; set; }
