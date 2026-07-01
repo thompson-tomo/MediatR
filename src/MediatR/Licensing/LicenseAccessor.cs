@@ -13,6 +13,9 @@ namespace MediatR.Licensing;
 
 internal class LicenseAccessor
 {
+    internal const string MediatRLicenseKeyEnvVariable = "MEDIATR_LICENSE_KEY";
+    internal const string SharedLicenseKeyEnvVariable = "LUCKYPENNY_LICENSE_KEY";
+
     private readonly MediatRServiceConfiguration? _configuration;
     private readonly ILogger _logger;
 
@@ -41,8 +44,7 @@ internal class LicenseAccessor
                 return _license;
             }
 
-            var key = _configuration?.LicenseKey
-                      ?? Mediator.LicenseKey;
+            var key = ResolveLicenseKey(_configuration?.LicenseKey, Mediator.LicenseKey);
 
             if (string.IsNullOrWhiteSpace(key))
             {
@@ -56,6 +58,19 @@ internal class LicenseAccessor
         }
     }
     
+    /// <summary>
+    /// Resolves the license key using the first non-blank value, in order of precedence: the
+    /// explicitly configured keys (the <see cref="MediatRServiceConfiguration.LicenseKey"/> then the
+    /// static <see cref="Mediator.LicenseKey"/>), the product-specific <c>MEDIATR_LICENSE_KEY</c>
+    /// environment variable, then the shared <c>LUCKYPENNY_LICENSE_KEY</c> environment variable
+    /// (usable across Lucky Penny products).
+    /// </summary>
+    internal static string? ResolveLicenseKey(params string?[] explicitKeys) =>
+        explicitKeys
+            .Append(Environment.GetEnvironmentVariable(MediatRLicenseKeyEnvVariable))
+            .Append(Environment.GetEnvironmentVariable(SharedLicenseKeyEnvVariable))
+            .FirstOrDefault(key => !string.IsNullOrWhiteSpace(key));
+
     private Claim[] ValidateKey(string licenseKey)
     {
         var handler = new JsonWebTokenHandler();
