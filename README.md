@@ -110,4 +110,19 @@ Mediator.LicenseKey = "<license key here>";
 > Turn off the license warning by configuring logging in your logging start configuration:
 > `builder.Logging.AddFilter("LuckyPennySoftware.MediatR.License", LogLevel.None);`
 
+#### Auto-discovery via environment variables
+
+If no license key is set in code, MediatR looks for one in environment variables. This is convenient for containerized and cloud environments, and for enterprises that share a single key across many services without code changes:
+
+- `MEDIATR_LICENSE_KEY` – the MediatR-specific license key.
+- `LUCKYPENNY_LICENSE_KEY` – a shared key usable across Lucky Penny products (for example, [AutoMapper](https://github.com/LuckyPennySoftware/AutoMapper) reads the same variable). Because it is shared, the key must be for a license that includes MediatR (a `Bundle` or MediatR edition); an AutoMapper-only license will not validate here.
+
+The license key is resolved in the following order of precedence, using the first value found:
+
+1. An explicit value set in code (`cfg.LicenseKey` or `Mediator.LicenseKey`).
+2. The `MEDIATR_LICENSE_KEY` environment variable.
+3. The `LUCKYPENNY_LICENSE_KEY` environment variable.
+
+No code change is required when using an environment variable—just register MediatR as usual without setting the license key.
+
 You can register for your license key at [MediatR.io](https://mediatr.io)
